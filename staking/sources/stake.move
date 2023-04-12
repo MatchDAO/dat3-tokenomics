@@ -190,7 +190,7 @@ module dat3::stake {
         if ((user.duration + duration) >= pool.max_lock_time) {
             duration = pool.max_lock_time;
         }else {
-            duration = user.amount_staked + duration;
+            duration = user.duration + duration;
         };
         if (duration > 0) {
             user.flexible = false;
