@@ -8,6 +8,8 @@ module dat3::simple_mapv1 {
     use std::error;
     use std::option;
     use std::vector;
+    #[test_only]
+    use aptos_std::debug;
 
     /// Map key already exists
     const EKEY_ALREADY_EXISTS: u64 = 1;
@@ -119,6 +121,25 @@ module dat3::simple_mapv1 {
         let element = vector::borrow_mut( &mut map.data, i);
         (&element.key, &mut element.value)
     }
+    public fun remove_index<Key: store, Value: store>(
+        map: &mut SimpleMapV1<Key, Value>,
+        i: u64,
+    ): (Key, Value) {
+        let Element { key, value } = vector::swap_remove(&mut map.data, i);
+        (key, value)
+    }
+    #[test]
+    #[expected_failure]
+    public fun test_remove_index() {
+        let map = create<u64, u64>();
+        add(&mut map, 2, 1);
+        add(&mut map, 3, 1);
+
+        remove_index(&mut map, 0);
+        debug::print(&map);
+        destroy_empty(map);
+        debug::print(&map);
+    }
 
     #[test]
     public fun add_remove_many() {
@@ -152,6 +173,7 @@ module dat3::simple_mapv1 {
 
         destroy_empty(map);
     }
+
 
     #[test]
     #[expected_failure]
