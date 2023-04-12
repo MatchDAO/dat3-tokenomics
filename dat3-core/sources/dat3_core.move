@@ -103,7 +103,7 @@ module dat3::dat3_core {
         dat3::stake::init(owner, time, epoch);
     }
 
-    public fun mint_to(_owner: &signer) acquires HodeCap, MintTime, GenesisInfo, SignerCapabilityStore
+    public entry fun mint_to(_owner: &signer) acquires HodeCap, MintTime, GenesisInfo, SignerCapabilityStore
     {
         assert!(assert_mint_time(), error::aborted(ASSERT_MINT_ERR));
         //for test
