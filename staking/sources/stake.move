@@ -187,7 +187,7 @@ module dat3::stake {
         let pool = borrow_global<Pool>(@dat3_stake);
         //add user duration
         let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
-        if ((user.amount_staked + duration) >= pool.max_lock_time) {
+        if ((user.duration + duration) >= pool.max_lock_time) {
             duration = pool.max_lock_time;
         }else {
             duration = user.amount_staked + duration;
