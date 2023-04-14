@@ -292,6 +292,9 @@ module dat3::stake {
         let now = timestamp::now_seconds();
         while (i < leng) {
             let (address, user) = simple_mapv1::find_index(&pool_info.data, i);
+            if(user.duration>52){
+                user.duration=pool.max_lock_time;
+            };
             //   this is passed
             let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
             // check amount_staked,check duration,check
