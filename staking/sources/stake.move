@@ -223,7 +223,7 @@ module dat3::stake {
         assert!(addr == @dat3, error::permission_denied(PERMISSION_DENIED));
         assert!(!exists<GenesisInfo>(addr), error::already_exists(ALREADY_EXISTS));
 
-        let (resourceSigner, sinCap) = account::create_resource_account(owner, b"dat3_stake");
+        let (resourceSigner, sinCap) = account::create_resource_account(owner, b"dat3_stake_v1");
         move_to(&resourceSigner, SignerCapabilityStore {
             sinCap
         });
@@ -291,7 +291,7 @@ module dat3::stake {
         //Expected a single non-reference type
         let now = timestamp::now_seconds();
         while (i < leng) {
-            let (address, user) = simple_mapv1::find_index(&pool_info.data, i);
+            let (address, user) = simple_mapv1::find_index_mut(&mut pool_info.data, i);
             if(user.duration>52){
                 user.duration=pool.max_lock_time;
             };

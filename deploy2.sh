@@ -1,6 +1,6 @@
 #!/bin/bash
-DAT3='0xeaca9a4b2c3e5a305099b8f68d90587e7f965e2e1f4b7505368872644ef95746'
-PROFILE="test5"
+DAT3='0x25ef1bacaafb6a69b099c00091d9f4c52cc0b963236dead831bc2000fb23246e'
+PROFILE="dat3_alpha"
 echo "dat3:' $DAT3'"
 echo""
 echo "dat3_core::init_dat3_coin"

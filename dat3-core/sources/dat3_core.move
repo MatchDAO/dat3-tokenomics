@@ -82,7 +82,7 @@ module dat3::dat3_core {
                 string::utf8(b"DAT3_alpha"),
                 6u8, true);
 
-        let (resourceSigner, sinCap) = account::create_resource_account(owner, b"dat3");
+        let (resourceSigner, sinCap) = account::create_resource_account(owner, b"dat3_v1");
         move_to(&resourceSigner, HodeCap {
             burnCap, freezeCap, mintCap
         });
