@@ -4,7 +4,7 @@ version = '0.0.5'
 upgrade_policy = "compatible"
 [dependencies]
 # # https://github.com/aptos-labs/aptos-core.git
-DAT3Pool ={local ="../../dat3-contract-core/reward-pool"}
+DAT3Pool ={local ="../../dat3-contract-core"}
 [addresses]
 std = "0x1"
 aptos_framework = "0x1"
