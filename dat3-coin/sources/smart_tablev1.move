@@ -335,18 +335,16 @@ module dat3::smart_tablev1 {
         table.target_bucket_size = target_bucket_size;
     }
 
-    public fun find_index<K:copy + drop, V>(table: & SmartTablev1<K, V>, key_index: u64): &V {
+    public fun find_index<K:copy + drop, V>(table: & SmartTablev1<K, V>, key_index: u64): (&K,&V) {
         let key = smart_vector::borrow (&table.keys, key_index) ;
-        return borrow(table, *key)
+        return ( key ,borrow(table, *key))
     }
 
-    public fun find_index_mut<K: copy + drop, V>(table: &mut SmartTablev1<K, V>, key_index: u64): &mut V {
-        let key = smart_vector::borrow(&table.keys, key_index) ;
-        return borrow_mut(table, *key)
+    public fun find_index_mut<K: copy + drop, V>(table: &mut SmartTablev1<K, V>, key_index: u64):(  &K,&mut V) {
+        let key =smart_vector::borrow( & table.keys,key_index);
+        return ( key ,borrow_mut( table, *key ))
     }
-    public fun find_indexs<K:copy + drop, V>(table: & SmartTablev1<K, V>, ): u64 {
-        return smart_vector::length(&table.keys)
-    }
+
 
     #[test]
    public fun smart_table_test() {
@@ -359,12 +357,15 @@ module dat3::smart_tablev1 {
             i = i + 1;
         };
         assert!(length(&table) == 2001, 0);
-        debug::print(find_index(&table,2000));
+       let( _,v )=find_index(&table,2000);
+        debug::print(v);
         debug::print(&utf8(b"11111111"));
         //debug::print(&find_indexs(&table));
         i=0;
         while (i < 2001) {
-            debug::print(find_index(&table,i));
+            let( k,v )=find_index(&table,i);
+            debug::print(k);
+            debug::print(v);
             i = i + 1;
         };
 
