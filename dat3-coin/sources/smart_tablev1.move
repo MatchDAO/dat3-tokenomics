@@ -11,8 +11,6 @@ module dat3::smart_tablev1 {
     use aptos_std::table_with_length::{Self, TableWithLength};
     use aptos_std::type_info::size_of_val;
     use aptos_std::math64::max;
-    use aptos_std::smart_vector::SmartVector;
-    use aptos_std::smart_vector;
     #[test_only]
     use aptos_std::debug;
 
@@ -49,7 +47,7 @@ module dat3::smart_tablev1 {
         split_load_threshold: u8,
         // The target size of each bucket, which is NOT enforced so oversized buckets can exist.
         target_bucket_size: u64,
-        bucket_keys: SmartVector<u64>,
+        bucket_keys: vector<u64>,
     }
 
     /// Create an empty SmartTablev1 with default configurations.
@@ -71,7 +69,7 @@ module dat3::smart_tablev1 {
         assert!(split_load_threshold <= 100, error::invalid_argument(EINVALID_LOAD_THRESHOLD_PERCENT));
         let buckets = table_with_length::new();
         table_with_length::add(&mut buckets, 0, vector::empty());
-        let keys = smart_vector::singleton(0u64);
+        let keys = vector::singleton(0u64);
         let table = SmartTablev1 {
             buckets,
             num_buckets: 1,
@@ -103,7 +101,7 @@ module dat3::smart_tablev1 {
             i = i + 1;
         };
         let SmartTablev1 { buckets, num_buckets: _, level: _, size: _, split_load_threshold: _, target_bucket_size: _, bucket_keys } = table;
-        smart_vector::destroy_empty(bucket_keys);
+        vector::destroy_empty(bucket_keys);
         table_with_length::destroy_empty(buckets);
     }
 
@@ -112,15 +110,15 @@ module dat3::smart_tablev1 {
         let i = 0;
         while (i < table.num_buckets) {
             table_with_length::remove(&mut table.buckets, i);
-            let (is, in) = smart_vector::index_of(&table.bucket_keys, &i);
+            let (is, in) = vector::index_of(&table.bucket_keys, &i);
             if (is) {
-                smart_vector::swap_remove(&mut table.bucket_keys, in);
+                vector::swap_remove(&mut table.bucket_keys, in);
             };
 
             i = i + 1;
         };
         let SmartTablev1 { buckets, num_buckets: _, level: _, size: _, split_load_threshold: _, target_bucket_size: _, bucket_keys } = table;
-        smart_vector::destroy_empty(bucket_keys);
+        vector::destroy_empty(bucket_keys);
         table_with_length::destroy_empty(buckets);
     }
 
@@ -183,7 +181,7 @@ module dat3::smart_tablev1 {
             vector::push_back(&mut new_bucket, entry);
             len = len - 1;
         };
-        smart_vector::push_back(&mut table.bucket_keys, new_bucket_index);
+        vector::push_back(&mut table.bucket_keys, new_bucket_index);
         table_with_length::add(&mut table.buckets, new_bucket_index, new_bucket);
     }
 
@@ -282,9 +280,9 @@ module dat3::smart_tablev1 {
                 let Entry { hash: _, key: _, value } = vector::swap_remove(bucket, i);
                 table.size = table.size - 1;
                 if (vector::length(bucket) == 0) {
-                    let (is, in) = smart_vector::index_of(&table.bucket_keys, &index);
+                    let (is, in) = vector::index_of(&table.bucket_keys, &index);
                     if (is) {
-                        smart_vector::swap_remove(&mut table.bucket_keys, in);
+                        vector::swap_remove(&mut table.bucket_keys, in);
                     };
                 };
                 return value
@@ -335,14 +333,14 @@ module dat3::smart_tablev1 {
         index_of_bucket_keys: u64,
         index: u64
     ): (&K, &V) {
-        let key = smart_vector::borrow(&table.bucket_keys, index_of_bucket_keys);
+        let key = vector::borrow(&table.bucket_keys, index_of_bucket_keys);
         let bucket = table_with_length::borrow(&table.buckets, *key);
         let en = vector::borrow(bucket, index);
         return (&en.key, &en.value)
     }
 
     public fun borrow_bucket<K: copy + drop, V>(table: & SmartTablev1<K, V>, index_of_bucket_keys: u64): &vector<Entry<K, V>> {
-        let key = smart_vector::borrow(&table.bucket_keys, index_of_bucket_keys);
+        let key = vector::borrow(&table.bucket_keys, index_of_bucket_keys);
         let bucket = table_with_length::borrow(&table.buckets, *key);
         return bucket
     }
@@ -351,7 +349,7 @@ module dat3::smart_tablev1 {
         table: &mut  SmartTablev1<K, V>,
         index_of_bucket_keys: u64
     ): &mut vector<Entry<K, V>> {
-        let key = smart_vector::borrow(&table.bucket_keys, index_of_bucket_keys);
+        let key = vector::borrow(&table.bucket_keys, index_of_bucket_keys);
         let bucket = table_with_length::borrow_mut(&mut table.buckets, *key);
         return bucket
     }
@@ -365,25 +363,18 @@ module dat3::smart_tablev1 {
     }
 
     public fun bucket_key<K, V>(table: & SmartTablev1<K, V>, index: u64): (u64, u64, u64) {
-        let len = smart_vector::length(&table.bucket_keys);
+        let len = vector::length(&table.bucket_keys);
         let _key = 0u64;
         let _bucket_len = 0u64;
         if (index < len) {
-            _key = *smart_vector::borrow(&table.bucket_keys, index);
+            _key = *vector::borrow(&table.bucket_keys, index);
             _bucket_len = vector::length(table_with_length::borrow(&table.buckets, _key));
         };
         return (len, _key, _bucket_len)
     }
 
     public fun bucket_keys<K, V>(table: & SmartTablev1<K, V>): vector<u64> {
-        let i = 0u64;
-        let len = smart_vector::length(&table.bucket_keys);
-        let res = vector::empty<u64>();
-        while (i < len) {
-            vector::push_back(&mut res, *smart_vector::borrow(&table.bucket_keys, i)) ;
-            i = i + 1;
-        };
-        return res
+        return table.bucket_keys
     }
 
     #[test]
