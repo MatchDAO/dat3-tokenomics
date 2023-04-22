@@ -21,11 +21,12 @@ module dat3::test {
     #[test(dat3 = @dat3)]
     fun test_resource_account(dat3: &signer)
     {
-        let (_, _sig1) = account::create_resource_account(dat3, b"dat3_v1");
-        let (_, _sig2) = account::create_resource_account(dat3, b"dat3_pool_v1");
-        let (_, _sig3) = account::create_resource_account(dat3, b"dat3_routel_v1");
-        let (_, _sig4) = account::create_resource_account(dat3, b"dat3_stake_v1");
-        let (_, _sig5) = account::create_resource_account(dat3, b"dat3_nft_v1");
+
+        let (_, _sig1) = account::create_resource_account(dat3, b"dat3_pool_v1");
+        let (_, _sig2) = account::create_resource_account(dat3, b"dat3_reward_v1");
+        let (_, _sig3) = account::create_resource_account(dat3, b"dat3_stake_v1");
+        let (_, _sig4) = account::create_resource_account(dat3, b"dat3_v1");
+        let (_, _sig5) = account::create_resource_account(dat3, b"dat3_payment_v1");
         let _sig1 = account::create_signer_with_capability(&_sig1);
         let _sig2 = account::create_signer_with_capability(&_sig2);
         let _sig3 = account::create_signer_with_capability(&_sig3);
