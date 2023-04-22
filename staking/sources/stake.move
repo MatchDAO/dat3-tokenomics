@@ -10,7 +10,7 @@ module dat3::stake {
     use aptos_framework::timestamp;
 
     use dat3::dat3_coin::DAT3;
-    use dat3::simple_mapv1::{Self, SimpleMapV1};
+    use dat3::smart_tablev1::{Self, SmartTablev1};
 
     struct SignerCapabilityStore has key, store {
         sinCap: SignerCapability,
@@ -28,7 +28,7 @@ module dat3::stake {
     }
 
     struct PoolInfo has key, store {
-        data: SimpleMapV1<address, UserPosition>
+        data: SmartTablev1<address, UserPosition>
     }
 
     struct Pool has key, store {
@@ -103,8 +103,8 @@ module dat3::stake {
             flexible = true;
         };
         // Update UserPosition
-        if (!simple_mapv1::contains_key(&pool_info.data, &addr)) {
-            simple_mapv1::add(&mut pool_info.data, addr, UserPosition {
+        if (!smart_tablev1::contains(&pool_info.data, addr)) {
+            smart_tablev1::add(&mut pool_info.data, addr, UserPosition {
                 amount_staked: amount,
                 start_time: timestamp::now_seconds(),
                 duration,
@@ -114,7 +114,7 @@ module dat3::stake {
                 veDAT3: 0u64
             })
         } else {
-            let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
+            let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
             user.amount_staked = user.amount_staked + amount;
             if (user.duration + duration >= pool.max_lock_time) {
                 duration = 52;
@@ -142,9 +142,9 @@ module dat3::stake {
 
 
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
-        assert!(simple_mapv1::contains_key(&pool_info.data, &addr), error::not_found(NO_USER));
+        assert!(smart_tablev1::contains(&pool_info.data, addr), error::not_found(NO_USER));
         let pool = borrow_global_mut<Pool>(@dat3_stake);
-        let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
+        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
         assert!(user.amount_staked > 0, error::aborted(EINSUFFICIENT_BALANCE));
         coin::deposit(addr, coin::extract(&mut pool.stake, user.amount_staked));
         user.amount_staked = 0;
@@ -160,13 +160,13 @@ module dat3::stake {
         assert!(exists<Pool>(@dat3_stake), error::aborted(INCENTIVE_POOL_NOT_FOUND));
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
         // check user
-        assert!(simple_mapv1::contains_key(&pool_info.data, &addr), error::aborted(NO_USER));
+        assert!(smart_tablev1::contains(&pool_info.data, addr), error::aborted(NO_USER));
         let pool = borrow_global_mut<Pool>(@dat3_stake);
         // Deposit staked coin
         let stake = coin::withdraw<DAT3>(sender, amount);
         coin::merge(&mut pool.stake, stake);
         //add user staked
-        let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
+        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
         if (user.start_time == 0) {
             user.start_time = timestamp::now_seconds();
         };
@@ -181,12 +181,12 @@ module dat3::stake {
         assert!(exists<Pool>(@dat3_stake), error::aborted(INCENTIVE_POOL_NOT_FOUND));
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
         // check user
-        assert!(simple_mapv1::contains_key(&pool_info.data, &addr), NO_USER);
+        assert!(smart_tablev1::contains(&pool_info.data, addr), NO_USER);
 
         //get max_lock_time
         let pool = borrow_global<Pool>(@dat3_stake);
         //add user duration
-        let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
+        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
         if ((user.duration + duration) >= pool.max_lock_time) {
             duration = pool.max_lock_time;
         }else {
@@ -208,8 +208,8 @@ module dat3::stake {
         assert!(coin::is_account_registered<DAT3>(addr), error::aborted(INVALID_ARGUMENT));
         assert!(exists<Pool>(@dat3_stake), error::aborted(INCENTIVE_POOL_NOT_FOUND));
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
-        assert!(!simple_mapv1::contains_key(&pool_info.data, &addr), NO_USER);
-        let user = simple_mapv1::borrow_mut(&mut pool_info.data, &addr);
+        assert!(!smart_tablev1::contains(&pool_info.data, addr), NO_USER);
+        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
         coin::deposit<DAT3>(addr, coin::extract_all(&mut user.reward));
     }
 
@@ -238,8 +238,8 @@ module dat3::stake {
                 reward: coin::zero<DAT3>(),
             });
         };
-        let s = simple_mapv1::create<address, UserPosition>();
-        simple_mapv1::add(&mut s, addr, UserPosition {
+        let s = smart_tablev1::new_with_config<address, UserPosition>(5, 75, 200);
+        smart_tablev1::add(&mut s, addr, UserPosition {
             amount_staked: 0,
             start_time: 0,
             duration: 0,
@@ -275,37 +275,48 @@ module dat3::stake {
     /* FRIEND FUNCTIONS */
     /*********************/
 
-    public  fun mint_pool(admin:&signer,coins: Coin<DAT3>)
+    public fun mint_pool(admin: &signer, coins: Coin<DAT3>)
     acquires Pool, PoolInfo
     {
-        assert!(signer::address_of(admin)==@dat3_admin, error::aborted(PERMISSION_DENIED));
+        assert!(signer::address_of(admin) == @dat3_admin, error::aborted(PERMISSION_DENIED));
         let pool = borrow_global_mut<Pool>(@dat3_stake);
         coin::merge(&mut pool.reward, coins);
 
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
-        let leng = simple_mapv1::length(&mut pool_info.data);
+
         let volume = 0u128;
         let volume_staked = 0u128;
         let i = 0;
         let users = vector::empty<address>();
         //Expected a single non-reference type
         let now = timestamp::now_seconds();
+        let bucket_keys = smart_tablev1::bucket_keys(&pool_info.data);
+        let leng = vector::length(&bucket_keys);
         while (i < leng) {
-            let (address, user) = simple_mapv1::find_index_mut(&mut pool_info.data, i);
-            if(user.duration>52){
-                user.duration=pool.max_lock_time;
-            };
-            //   this is passed
-            let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
-            // check amount_staked,check duration,check
-            if (user.amount_staked > 0 && (user.duration > passed || user.flexible)) {
-                let temp = 0u128;
-                if (!user.flexible) {
-                    temp = ((user.duration - passed) as u128);
+            let usr_bucket = smart_tablev1::borrow_bucket_mut<address, UserPosition>
+                (&mut pool_info.data, *vector::borrow(&bucket_keys, i));
+            let b_len = vector::length(usr_bucket);
+            if (b_len > 0) {
+                let j = 0u64;
+                while (j < b_len) {
+                    let en = vector::borrow_mut(usr_bucket, j);
+                    let (address, user) = smart_tablev1::entry_mut(en);
+                    if (user.duration > 52) {
+                        user.duration = pool.max_lock_time;
+                    };
+                    //   this is passed
+                    let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
+                    // check amount_staked,check duration,check
+                    if (user.amount_staked > 0 && (user.duration > passed || user.flexible)) {
+                        let temp = 0u128;
+                        if (!user.flexible) {
+                            temp = ((user.duration - passed) as u128);
+                        };
+                        volume = volume + ((user.amount_staked as u128) * ((temp * pool.rate_of) + pool.rate_of_decimal));
+                        volume_staked = volume_staked + (user.amount_staked as u128);
+                        vector::push_back(&mut users, *address);};
+                    j = j + 1;
                 };
-                volume = volume + ((user.amount_staked as u128) * ((temp * pool.rate_of) + pool.rate_of_decimal));
-                volume_staked = volume_staked + (user.amount_staked as u128);
-                vector::push_back(&mut users, *address)
             };
             i = i + 1;
         };
@@ -316,7 +327,7 @@ module dat3::stake {
             let reward_val = coin::value<DAT3>(&mut pool.reward)  ;
             while (i < leng) {
                 let user_address = vector::borrow(&mut users, i);
-                let one_of_user = simple_mapv1::borrow_mut(&mut pool_info.data, user_address);
+                let one_of_user = smart_tablev1::borrow_mut(&mut pool_info.data, *user_address);
                 let passed = ((((now as u128) - (one_of_user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
                 let temp = 0u128;
                 if (!one_of_user.flexible) {
@@ -408,12 +419,12 @@ module dat3::stake {
         let pool = borrow_global<Pool>(@dat3_stake);
         //all staking
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
-        if (!simple_mapv1::contains_key(&pool_info.data, &addr)) {
+        if (!smart_tablev1::contains(&pool_info.data, addr)) {
             return (0u64, 0u64, true, 0u64, 0u64, 0u64, (coin::value(
                 &pool.stake
             ) as u128), 0u128, 0u128, 0u128, 0u128, 0u128)
         };
-        let your_s = simple_mapv1::borrow(&pool_info.data, &addr);
+        let your_s = smart_tablev1::borrow(&pool_info.data, addr);
         let _vedat3 = your_s.veDAT3;
 
         let pool = borrow_global<Pool>(@dat3_stake);
@@ -463,7 +474,7 @@ module dat3::stake {
         assert!(exists<Pool>(@dat3_stake), error::already_exists(ALREADY_EXISTS));
         let pool = borrow_global<Pool>(@dat3_stake);
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
-        if (!simple_mapv1::contains_key(&pool_info.data, &addr)) {
+        if (!smart_tablev1::contains(&pool_info.data, addr)) {
             return (0u64, 0u64, true, 0u64, 0u64, 0u64, (coin::value(
                 &pool.stake
             ) as u128), 0u128, 0u128, 0u128, 0u128, 0u128)
@@ -474,7 +485,7 @@ module dat3::stake {
         let genesis = borrow_global<GenesisInfo>(@dat3_stake);
         //all staking
 
-        let your_s = simple_mapv1::borrow(&pool_info.data, &addr);
+        let your_s = smart_tablev1::borrow(&pool_info.data, addr);
         let duration = your_s.duration + duration_more;
         let staking = your_s.amount_staked + staking_more;
         let flexible = your_s.flexible;
@@ -517,7 +528,7 @@ module dat3::stake {
         duration: u64,
         flexible: bool,
         start: u64,
-        data: &SimpleMapV1<address, UserPosition>,
+        data: &SmartTablev1<address, UserPosition>,
         now: u64,
         genesis_epoch: u64,
         rate_of: u128,
@@ -533,29 +544,45 @@ module dat3::stake {
         let users = vector::empty<address>();
         //index
         let i = 0u64;
-        let leng = simple_mapv1::length(data);
+        let bucket_keys = smart_tablev1::bucket_keys(data);
+        let leng = vector::length(&bucket_keys);
         let current_epoch = reconfiguration::current_epoch();
         let today_volume = 0u128;
-        while (i < leng) {
-            let (address, user) = simple_mapv1::find_index(data, i);
-            //   this is passed
-            let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
-            // check amount_staked,check duration ,check
-            if (user.amount_staked > 0 && (user.duration > passed || user.flexible) && address != &addr) {
-                //All users who are staking
-                total_staking = total_staking + (user.amount_staked as u128);
-                let temp_user_passed = (((time - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
-                if (((user.duration > temp_user_passed) || user.flexible) && *address != addr) {
-                    let temp = 0u128;
-                    if (!user.flexible) {
-                        temp = ((user.duration - temp_user_passed) as u128);
+
+            while (i < leng) {
+                let usr_bucket = smart_tablev1::borrow_bucket<address, UserPosition>
+                    ( data, *vector::borrow(&bucket_keys, i));
+                let b_len = vector::length(usr_bucket);
+                if (b_len > 0) {
+                    let j = 0u64;
+                    while (j < b_len) {
+                        let en = vector::borrow(usr_bucket, j);
+                        let (address, user) = smart_tablev1::entry(en);
+
+                        //   this is passed
+                        let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
+                        // check amount_staked,check duration ,check
+                        if (user.amount_staked > 0 && (user.duration > passed || user.flexible) && address != &addr) {
+                            //All users who are staking
+                            total_staking = total_staking + (user.amount_staked as u128);
+                            let temp_user_passed = (((time - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
+                            if (((user.duration > temp_user_passed) || user.flexible) && *address != addr) {
+                                let temp = 0u128;
+                                if (!user.flexible) {
+                                    temp = ((user.duration - temp_user_passed) as u128);
+                                };
+                                today_volume = today_volume + ((user.amount_staked as u128) * (temp * rate_of + rate_of_decimal));
+                            };
+                            vector::push_back(&mut users, *address)
+                        };
+                        j = j + 1;
                     };
-                    today_volume = today_volume + ((user.amount_staked as u128) * (temp * rate_of + rate_of_decimal));
                 };
-                vector::push_back(&mut users, *address)
+                i = i + 1;
             };
-            i = i + 1;
-        };
+
+
+
         let today_mint = simulate_mint(genesis_epoch, current_epoch);
         let my_today = 0u128;
         let passed = ((((now - start) as u128) / SECONDS_OF_WEEK) as u64);
@@ -570,8 +597,8 @@ module dat3::stake {
 
 
         if (flexible) {
-            if (simple_mapv1::contains_key(data, &addr)) {
-                let you_user = simple_mapv1::borrow(data, &addr);
+            if (smart_tablev1::contains(data, addr)) {
+                let you_user = smart_tablev1::borrow<address,UserPosition>(data,  addr);
                 //Represents that there are currently staking
                 if (you_user.already_reward > 0 && you_user.start_time > 0 && (((now - you_user.start_time) as u128) / SECONDS_OF_DAY) > 0) {
                     let actually_day = ((now - you_user.start_time) as u128) / SECONDS_OF_DAY   ;
@@ -630,7 +657,7 @@ module dat3::stake {
                 if (leng > 0) {
                     while (j < leng) {
                         let add_j = vector::borrow(&users, j);
-                        let temp_user = simple_mapv1::borrow(data, add_j);
+                        let temp_user = smart_tablev1::borrow<address,UserPosition>(data, *add_j);
                         // duration
                         let temp_user_passed = (((time - (temp_user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
                         if (((temp_user.duration > temp_user_passed) || temp_user.flexible) && *add_j != addr) {
