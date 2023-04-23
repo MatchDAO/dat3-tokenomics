@@ -7,6 +7,8 @@ module dat3::test {
     use aptos_framework::aptos_account::create_account;
     use aptos_framework::timestamp;
     use aptos_framework::genesis;
+    use dat3::reward;
+    use dat3::pool;
 
     #[test(dat3 = @dat3,fw= @aptos_framework)]
     fun init_dat3_coin1(dat3: &signer,fw:&signer)
@@ -16,6 +18,10 @@ module dat3::test {
         timestamp::update_global_time_for_test(1679899905000000);
         create_account(@dat3);
         init_dat3_coin(dat3);
+        pool::init_pool(dat3);
+        reward::init(dat3);
+        reward::sys_user_init(dat3,1,2,@dat3);
+       let (_v1, _v2, _v3, _v4, _v5, _v6, _v7, _v8, _v9, _v10, _v11, _v12, _v13, )= reward::assets(@dat3);
     }
 
     #[test(dat3 = @dat3)]

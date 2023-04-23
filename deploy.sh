@@ -1,5 +1,5 @@
 #!/bin/bash
-DAT3='0x9de3dfe965f6ff75127082fb1e9cb2f17f4697e721191d31c877d14c3b891345'
+DAT3='0x6748abb929b79db07daf1f4f93c81cde7e298562fbaf80ab6fa8b6b59d15582a'
 PROFILE="test1"
 
 echo "dat3:  $DAT3  $PROFILE"
@@ -10,12 +10,12 @@ DAT3_T_INTERFACE="$BASE_PATH/interface"
 DAT3_STAKING="$BASE_PATH/staking"
 
 
-echo "aptos move compile -->  $DAT3_COIN  "
- echo `aptos move compile --save-metadata --package-dir  $DAT3_COIN --bytecode-version 6 `
-echo""
-sleep 3
-echo "aptos move publish --> $DAT3_COIN   "
-echo `aptos move publish --profile  $PROFILE  --assume-yes --package-dir  $DAT3_COIN --bytecode-version 6 `
+#echo "aptos move compile -->  $DAT3_COIN  "
+#echo `aptos move compile --save-metadata --package-dir  $DAT3_COIN --bytecode-version 6 `
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_COIN   "
+#echo `aptos move publish --profile  $PROFILE  --assume-yes --package-dir  $DAT3_COIN --bytecode-version 6 `
 echo""
 sleep 3
 cd ..
@@ -41,40 +41,40 @@ sleep 3
 echo "aptos move publish --> $DAT3_NFT_REWARD   "
 echo `aptos move publish --profile  $N_PROFILE --assume-yes --package-dir  $DAT3_NFT_REWARD --bytecode-version 6 `
 echo""
-sleep 3
-echo "aptos move compile -->  $DAT3_POOL  "
-echo `aptos move compile --save-metadata --package-dir  $DAT3_POOL --bytecode-version 6 `
+#sleep 3
+#echo "aptos move compile -->  $DAT3_POOL  "
+#echo `aptos move compile --save-metadata --package-dir  $DAT3_POOL --bytecode-version 6 `
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_POOL   "
+#echo `aptos move publish --profile  $PROFILE --assume-yes --package-dir  $DAT3_POOL --bytecode-version 6 `
+#echo""
+#sleep 3
+#echo "aptos move compile -->  $DAT3_POOL_payment  "
+#echo `aptos move compile --save-metadata --package-dir  $DAT3_POOL_payment --bytecode-version 6 `
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_POOL_payment   "
+#echo `aptos move publish --profile  $PROFILE --assume-yes --package-dir  $DAT3_POOL_payment --bytecode-version 6 `
 echo""
-sleep 3
-echo "aptos move publish --> $DAT3_POOL   "
-echo `aptos move publish --profile  $PROFILE --assume-yes --package-dir  $DAT3_POOL --bytecode-version 6 `
-echo""
-sleep 3
-echo "aptos move compile -->  $DAT3_POOL_payment  "
-echo `aptos move compile --save-metadata --package-dir  $DAT3_POOL_payment --bytecode-version 6 `
-echo""
-sleep 3
-echo "aptos move publish --> $DAT3_POOL_payment   "
-echo `aptos move publish --profile  $PROFILE --assume-yes --package-dir  $DAT3_POOL_payment --bytecode-version 6 `
-echo""
-sleep 3
-echo "aptos move compile -->  $DAT3_T_INTERFACE  "
-echo `aptos move compile --save-metadata --package-dir  $DAT3_T_INTERFACE --bytecode-version 6 `
-echo""
-sleep 3
-echo "aptos move publish --> $DAT3_T_INTERFACE   "
-echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_T_INTERFACE --bytecode-version 6 `
-echo""
-echo "aptos move compile -->  $DAT3_STAKING  "
-echo `aptos move compile   --save-metadata --package-dir  $DAT3_STAKING  --bytecode-version 6`
-echo""
-sleep 3
-echo "aptos move publish --> $DAT3_STAKING   "
-echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_STAKING --bytecode-version 6 `
-echo""
-echo "aptos move compile -->  $DAT3_CORE  "
-echo `aptos move compile  --save-metadata --package-dir  $DAT3_CORE  --bytecode-version 6`
-echo""
-sleep 3
-echo "aptos move publish --> $DAT3_CORE   "
-echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_CORE  --bytecode-version 6`
+#sleep 3
+#echo "aptos move compile -->  $DAT3_T_INTERFACE  "
+#echo `aptos move compile --save-metadata --package-dir  $DAT3_T_INTERFACE --bytecode-version 6 `
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_T_INTERFACE   "
+#echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_T_INTERFACE --bytecode-version 6 `
+#echo""
+#echo "aptos move compile -->  $DAT3_STAKING  "
+#echo `aptos move compile   --save-metadata --package-dir  $DAT3_STAKING  --bytecode-version 6`
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_STAKING   "
+#echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_STAKING --bytecode-version 6 `
+#echo""
+#echo "aptos move compile -->  $DAT3_CORE  "
+#echo `aptos move compile  --save-metadata --package-dir  $DAT3_CORE  --bytecode-version 6`
+#echo""
+#sleep 3
+#echo "aptos move publish --> $DAT3_CORE   "
+#echo `aptos move publish  --profile  $PROFILE --assume-yes --package-dir  $DAT3_CORE  --bytecode-version 6`
