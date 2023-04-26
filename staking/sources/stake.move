@@ -27,6 +27,14 @@ module dat3::stake {
 
     }
 
+    struct Temp {
+        addr: address,
+        stake: u64,
+        duration: u64,
+        flexible: bool,
+
+    }
+
     struct PoolInfo has key, store {
         data: SmartTablev1<address, UserPosition>
     }
@@ -369,6 +377,47 @@ module dat3::stake {
     }
 
     #[view]
+    public fun staking_info(): vector<Temp> acquires PoolInfo
+    {
+        assert!(exists<Pool>(@dat3_stake), error::aborted(INCENTIVE_POOL_NOT_FOUND));
+        let pool = borrow_global<PoolInfo>(@dat3_stake);
+        let i = 0u64;
+        let bucket_keys = smart_tablev1::bucket_keys(&pool.data);
+        let leng = vector::length(&bucket_keys);
+        let now = timestamp::now_seconds();
+        let temp = vector::empty<Temp>();
+        while (i < leng) {
+            let usr_bucket = smart_tablev1::borrow_bucket
+                (&pool.data, *vector::borrow(&bucket_keys, i));
+            let b_len = vector::length(usr_bucket);
+            if (b_len > 0) {
+                let j = 0u64;
+                while (j < b_len) {
+                    let en = vector::borrow(usr_bucket, j);
+                    let (address, user) = smart_tablev1::entry(en);
+
+                    //   this is passed
+                    let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_DAY) as u64)  ;
+                    // check amount_staked,check duration ,check
+                    if (user.amount_staked > 0 && (user.duration * 7 > passed || user.flexible)) {
+                        //All users who are staking
+                        vector::push_back(&mut temp, Temp {
+                            addr: *address,
+                            stake: user.amount_staked,
+                            duration: user.duration,
+                            flexible: user.flexible
+                        })
+                    };
+                    j = j + 1;
+                };
+            };
+            i = i + 1;
+        };
+
+        return temp
+    }
+
+    #[view]
     public fun apr(staking: u64, duration: u64, flexible: bool)
     : (u64, u64, bool, u64, u64, u64, u128, u128, u128, u128, u128, u128)
     acquires Pool, PoolInfo, GenesisInfo
@@ -412,20 +461,22 @@ module dat3::stake {
         );
         (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, roi, apr, vedat3, taday_ve)
     }
+
     public fun your(addr: address, )
-    : (u64, u64,  u64, u64, u64,bool, u64, ) acquires  PoolInfo
+    : (u64, u64, u64, u64, u64, bool, u64, ) acquires PoolInfo
     {
         assert!(exists<Pool>(@dat3_stake), error::already_exists(ALREADY_EXISTS));
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
         let your_s = smart_tablev1::borrow(&pool_info.data, addr);
-        (your_s.amount_staked ,
-         your_s.start_time ,
-         your_s.duration ,
-         coin::value(&your_s.reward) ,
-         your_s.already_reward ,
-         your_s.flexible ,
-         your_s.veDAT3  ,)
+        (your_s.amount_staked,
+            your_s.start_time,
+            your_s.duration,
+            coin::value(&your_s.reward),
+            your_s.already_reward,
+            your_s.flexible,
+            your_s.veDAT3, )
     }
+
     #[view]
     public fun your_staking(addr: address, )
     : (u64, u64, bool, u64, u64, u64, u128, u128, u128, u128, u128, u128) acquires Pool, PoolInfo, GenesisInfo
@@ -496,7 +547,6 @@ module dat3::stake {
         };
 
 
-
         let genesis = borrow_global<GenesisInfo>(@dat3_stake);
         //all staking
 
@@ -532,7 +582,7 @@ module dat3::stake {
             pool.rate_of,
             pool.rate_of_decimal
         );
-        (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, remaining_time_roi, apr,   remaining_time_vedat3 , _taday_ve)
+        (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, remaining_time_roi, apr, remaining_time_vedat3, _taday_ve)
     }
 
     /*********************/
@@ -612,21 +662,21 @@ module dat3::stake {
         };
         //   staking * y''      y''= (week*0.3836)+1
         let taday_r = today_mint * my_today / (today_volume + my_today);
-        let apr = taday_r * 365 * 100000000 * 100 / (staking as u128)  ;
+        // Wrong calculation of _apr magnification so * 10
+        let _apr = taday_r * 365 * 100000000 * 10 / (staking as u128)  ;
 
         if (flexible) {
             let roi = (taday_r) * 100000000 / (staking as u128)  ;
             _vedat3 = taday_r  ;
-            return (total_staking, taday_r, roi, apr, _vedat3, _vedat3)
+            return (total_staking, taday_r, roi, _apr, _vedat3, _vedat3)
         };
 
-        let taday_r = today_mint * my_today / (today_volume + my_today);
         _all_simulate_reward = taday_r * (duration as u128) * 7 ;
-        let roi = _all_simulate_reward * 100000000 / (staking as u128)   ;
-        let _apr = taday_r * 100000000 * 365 / (staking as u128) ;
+        // Wrong calculation of ROI magnification so * 10
+        let roi = _all_simulate_reward * 100000000 * 10/ (staking as u128);
         _vedat3 = _all_simulate_reward;
 
-        return (total_staking, _all_simulate_reward, roi, _apr, _vedat3,taday_r )
+        return (total_staking, _all_simulate_reward, roi, _apr, _vedat3, taday_r)
     }
 
 
@@ -639,7 +689,7 @@ module dat3::stake {
             m = m * 2;
             i = i + 1;
         };
-        let mint = STAKE_EMISSION* math128::pow(10, (coin::decimals<DAT3>() as u128)) / m  ;
+        let mint = STAKE_EMISSION * math128::pow(10, (coin::decimals<DAT3>() as u128)) / m  ;
         return mint
     }
 }

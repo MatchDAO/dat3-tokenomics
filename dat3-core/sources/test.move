@@ -50,13 +50,14 @@ module dat3::test {
         debug::print(&signer::address_of(&_sig5));
     }
 
-    #[test(dat3 = @dat3,fw= @aptos_framework)]
-    fun stake_test(dat3: &signer,fw:&signer)
+    #[test(dat3 = @dat3,dd=@dat3_reward,fw= @aptos_framework,)]
+    fun stake_test(dat3: &signer,dd:&signer,fw:&signer)
     {
         genesis::setup();
         timestamp::set_time_has_started_for_testing(fw);
         timestamp::update_global_time_for_test(1679899905000000);
         create_account(@dat3);
+        create_account(@dat3_reward);
 
         init_dat3_coin(dat3);
         pool::init_pool(dat3);
@@ -70,9 +71,12 @@ module dat3::test {
         debug::print(&_v5);
 
         coin::register<DAT3>(fw);
+        coin::register<DAT3>(dd);
         coin::transfer<DAT3>(dat3,@aptos_framework,50000000);
-        stake::deposit(dat3,50000000,5);
-        stake::deposit(fw,50000000,8);
+        coin::transfer<DAT3>(dat3,@dat3_reward,50000000);
+        stake::deposit(dat3,40000000,1);
+        stake::deposit(dd,50000000,0);
+        stake::deposit(fw,10000000,1);
         debug::print(&utf8(b"-------------------------"));
         let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,)=stake::your(@dat3);
         debug::print(&_v1);
@@ -85,7 +89,7 @@ module dat3::test {
         debug::print(&utf8(b"-------------------------"));
 
         let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,_v8,_v9,_v10,_v11,_v12,)
-            = stake::your_staking_more(@aptos_framework,0,0);
+            = stake::your_staking_more(@dat3_reward,0,0);
         debug::print(&_v1);
         debug::print(&_v2);
         debug::print(&_v3);
@@ -100,7 +104,7 @@ module dat3::test {
         debug::print(&_v12);
         debug::print(&utf8(b"-------------------------"));
         let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,_v8,_v9,_v10,_v11,_v12,)
-            = stake::your_staking_more(@dat3,0,3);
+            = stake::your_staking_more(@dat3,0,0);
         debug::print(&_v1);
         debug::print(&_v2);
         debug::print(&_v3);
