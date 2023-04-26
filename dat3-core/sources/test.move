@@ -3,12 +3,16 @@ module dat3::test {
     use aptos_framework::account;
     use aptos_std::debug;
     use std::signer;
-    use dat3::dat3_core::init_dat3_coin;
+    use dat3::dat3_core::{init_dat3_coin, mint_to};
     use aptos_framework::aptos_account::create_account;
     use aptos_framework::timestamp;
     use aptos_framework::genesis;
     use dat3::reward;
     use dat3::pool;
+    use dat3::stake;
+    use aptos_framework::coin;
+    use dat3::dat3_coin::DAT3;
+    use std::string::utf8;
 
     #[test(dat3 = @dat3,fw= @aptos_framework)]
     fun init_dat3_coin1(dat3: &signer,fw:&signer)
@@ -45,4 +49,70 @@ module dat3::test {
         debug::print(&signer::address_of(&_sig4));
         debug::print(&signer::address_of(&_sig5));
     }
+
+    #[test(dat3 = @dat3,fw= @aptos_framework)]
+    fun stake_test(dat3: &signer,fw:&signer)
+    {
+        genesis::setup();
+        timestamp::set_time_has_started_for_testing(fw);
+        timestamp::update_global_time_for_test(1679899905000000);
+        create_account(@dat3);
+
+        init_dat3_coin(dat3);
+        pool::init_pool(dat3);
+        reward::init(dat3);
+        mint_to(dat3);
+        let (_v1,_v2,_v3,_v4,_v5,)=stake::pool_info();
+        debug::print(&_v1);
+        debug::print(&_v2);
+        debug::print(&_v3);
+        debug::print(&_v4);
+        debug::print(&_v5);
+
+        coin::register<DAT3>(fw);
+        coin::transfer<DAT3>(dat3,@aptos_framework,50000000);
+        stake::deposit(dat3,50000000,5);
+        stake::deposit(fw,50000000,8);
+        debug::print(&utf8(b"-------------------------"));
+        let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,)=stake::your(@dat3);
+        debug::print(&_v1);
+        debug::print(&_v2);
+        debug::print(&_v3);
+        debug::print(&_v4);
+        debug::print(&_v5);
+        debug::print(&_v6);
+        debug::print(&_v7);
+        debug::print(&utf8(b"-------------------------"));
+
+        let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,_v8,_v9,_v10,_v11,_v12,)
+            = stake::your_staking_more(@aptos_framework,0,0);
+        debug::print(&_v1);
+        debug::print(&_v2);
+        debug::print(&_v3);
+        debug::print(&_v4);
+        debug::print(&_v5);
+        debug::print(&_v6);
+        debug::print(&_v7);
+        debug::print(&_v8);
+        debug::print(&_v9);
+        debug::print(&_v10);
+        debug::print(&_v11);
+        debug::print(&_v12);
+        debug::print(&utf8(b"-------------------------"));
+        let (_v1,_v2,_v3,_v4,_v5,_v6,_v7,_v8,_v9,_v10,_v11,_v12,)
+            = stake::your_staking_more(@dat3,0,3);
+        debug::print(&_v1);
+        debug::print(&_v2);
+        debug::print(&_v3);
+        debug::print(&_v4);
+        debug::print(&_v5);
+        debug::print(&_v6);
+        debug::print(&_v7);
+        debug::print(&_v8);
+        debug::print(&_v9);
+        debug::print(&_v10);
+        debug::print(&_v11);
+        debug::print(&_v12);
+
+      }
 }

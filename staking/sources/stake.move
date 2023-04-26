@@ -60,6 +60,7 @@ module dat3::stake {
     const SECONDS_OF_DAY: u128 = 86400 ;
     const EPOCH_OF_DAY: u64 = 12 ;
     const TOTAL_EMISSION: u128 = 7200;
+    const STAKE_EMISSION: u128 = 1080;
     //7d of seconds
     const ONE_W: u64 = 604800;
 
@@ -114,7 +115,7 @@ module dat3::stake {
                 veDAT3: 0u64
             })
         } else {
-            let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
+            let user = smart_tablev1::borrow_mut<address, UserPosition>(&mut pool_info.data, addr);
             user.amount_staked = user.amount_staked + amount;
             if (user.duration + duration >= pool.max_lock_time) {
                 duration = 52;
@@ -144,7 +145,7 @@ module dat3::stake {
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
         assert!(smart_tablev1::contains(&pool_info.data, addr), error::not_found(NO_USER));
         let pool = borrow_global_mut<Pool>(@dat3_stake);
-        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
+        let user = smart_tablev1::borrow_mut<address, UserPosition>(&mut pool_info.data, addr);
         assert!(user.amount_staked > 0, error::aborted(EINSUFFICIENT_BALANCE));
         coin::deposit(addr, coin::extract(&mut pool.stake, user.amount_staked));
         user.amount_staked = 0;
@@ -166,7 +167,7 @@ module dat3::stake {
         let stake = coin::withdraw<DAT3>(sender, amount);
         coin::merge(&mut pool.stake, stake);
         //add user staked
-        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
+        let user = smart_tablev1::borrow_mut<address, UserPosition>(&mut pool_info.data, addr);
         if (user.start_time == 0) {
             user.start_time = timestamp::now_seconds();
         };
@@ -186,7 +187,7 @@ module dat3::stake {
         //get max_lock_time
         let pool = borrow_global<Pool>(@dat3_stake);
         //add user duration
-        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
+        let user = smart_tablev1::borrow_mut<address, UserPosition>(&mut pool_info.data, addr);
         if ((user.duration + duration) >= pool.max_lock_time) {
             duration = pool.max_lock_time;
         }else {
@@ -209,7 +210,7 @@ module dat3::stake {
         assert!(exists<Pool>(@dat3_stake), error::aborted(INCENTIVE_POOL_NOT_FOUND));
         let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
         assert!(!smart_tablev1::contains(&pool_info.data, addr), NO_USER);
-        let user = smart_tablev1::borrow_mut<address,UserPosition>(&mut pool_info.data, addr);
+        let user = smart_tablev1::borrow_mut<address, UserPosition>(&mut pool_info.data, addr);
         coin::deposit<DAT3>(addr, coin::extract_all(&mut user.reward));
     }
 
@@ -314,7 +315,8 @@ module dat3::stake {
                         };
                         volume = volume + ((user.amount_staked as u128) * ((temp * pool.rate_of) + pool.rate_of_decimal));
                         volume_staked = volume_staked + (user.amount_staked as u128);
-                        vector::push_back(&mut users, *address);};
+                        vector::push_back(&mut users, *address);
+                    };
                     j = j + 1;
                 };
             };
@@ -410,7 +412,20 @@ module dat3::stake {
         );
         (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, roi, apr, vedat3, taday_ve)
     }
-
+    public fun your(addr: address, )
+    : (u64, u64,  u64, u64, u64,bool, u64, ) acquires  PoolInfo
+    {
+        assert!(exists<Pool>(@dat3_stake), error::already_exists(ALREADY_EXISTS));
+        let pool_info = borrow_global_mut<PoolInfo>(@dat3_stake);
+        let your_s = smart_tablev1::borrow(&pool_info.data, addr);
+        (your_s.amount_staked ,
+         your_s.start_time ,
+         your_s.duration ,
+         coin::value(&your_s.reward) ,
+         your_s.already_reward ,
+         your_s.flexible ,
+         your_s.veDAT3  ,)
+    }
     #[view]
     public fun your_staking(addr: address, )
     : (u64, u64, bool, u64, u64, u64, u128, u128, u128, u128, u128, u128) acquires Pool, PoolInfo, GenesisInfo
@@ -479,7 +494,7 @@ module dat3::stake {
                 &pool.stake
             ) as u128), 0u128, 0u128, 0u128, 0u128, 0u128)
         };
-        let vedat3 = 0u128;
+
 
 
         let genesis = borrow_global<GenesisInfo>(@dat3_stake);
@@ -500,7 +515,9 @@ module dat3::stake {
         };
         //add your stake factor
         let boost = ((temp * pool.rate_of) + pool.rate_of_decimal) ;
-
+        if (duration > 0) {
+            flexible = false;
+        };
 
         let (total_staking, all_simulate_reward, remaining_time_roi, apr, remaining_time_vedat3, _taday_ve)
             = staking_calculator(
@@ -515,7 +532,7 @@ module dat3::stake {
             pool.rate_of,
             pool.rate_of_decimal
         );
-        (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, remaining_time_roi, apr, (remaining_time_vedat3 + vedat3), _taday_ve)
+        (staking, duration, flexible, current_rewards, start, (boost as u64), total_staking, all_simulate_reward, remaining_time_roi, apr,   remaining_time_vedat3 , _taday_ve)
     }
 
     /*********************/
@@ -539,7 +556,7 @@ module dat3::stake {
         let total_staking = (staking as u128);
         let _vedat3 = 0u128;
         let time = (now as u128) + 1;
-        let all_simulate_reward = 0u128;
+        let _all_simulate_reward = 0u128;
 
         let users = vector::empty<address>();
         //index
@@ -549,38 +566,37 @@ module dat3::stake {
         let current_epoch = reconfiguration::current_epoch();
         let today_volume = 0u128;
 
-            while (i < leng) {
-                let usr_bucket = smart_tablev1::borrow_bucket<address, UserPosition>
-                    ( data, *vector::borrow(&bucket_keys, i));
-                let b_len = vector::length(usr_bucket);
-                if (b_len > 0) {
-                    let j = 0u64;
-                    while (j < b_len) {
-                        let en = vector::borrow(usr_bucket, j);
-                        let (address, user) = smart_tablev1::entry(en);
+        while (i < leng) {
+            let usr_bucket = smart_tablev1::borrow_bucket<address, UserPosition>
+                (data, *vector::borrow(&bucket_keys, i));
+            let b_len = vector::length(usr_bucket);
+            if (b_len > 0) {
+                let j = 0u64;
+                while (j < b_len) {
+                    let en = vector::borrow(usr_bucket, j);
+                    let (address, user) = smart_tablev1::entry(en);
 
-                        //   this is passed
-                        let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
-                        // check amount_staked,check duration ,check
-                        if (user.amount_staked > 0 && (user.duration > passed || user.flexible) && address != &addr) {
-                            //All users who are staking
-                            total_staking = total_staking + (user.amount_staked as u128);
-                            let temp_user_passed = (((time - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
-                            if (((user.duration > temp_user_passed) || user.flexible) && *address != addr) {
-                                let temp = 0u128;
-                                if (!user.flexible) {
-                                    temp = ((user.duration - temp_user_passed) as u128);
-                                };
-                                today_volume = today_volume + ((user.amount_staked as u128) * (temp * rate_of + rate_of_decimal));
+                    //   this is passed
+                    let passed = ((((now as u128) - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64)  ;
+                    // check amount_staked,check duration ,check
+                    if (user.amount_staked > 0 && (user.duration > passed || user.flexible) && address != &addr) {
+                        //All users who are staking
+                        total_staking = total_staking + (user.amount_staked as u128);
+                        let temp_user_passed = (((time - (user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
+                        if (((user.duration > temp_user_passed) || user.flexible) && *address != addr) {
+                            let temp = 0u128;
+                            if (!user.flexible) {
+                                temp = ((user.duration - temp_user_passed) as u128);
                             };
-                            vector::push_back(&mut users, *address)
+                            today_volume = today_volume + ((user.amount_staked as u128) * (temp * rate_of + rate_of_decimal));
                         };
-                        j = j + 1;
+                        vector::push_back(&mut users, *address)
                     };
+                    j = j + 1;
                 };
-                i = i + 1;
             };
-
+            i = i + 1;
+        };
 
 
         let today_mint = simulate_mint(genesis_epoch, current_epoch);
@@ -594,109 +610,23 @@ module dat3::stake {
             };
             my_today = (staking as u128) * ((temp * rate_of) + rate_of_decimal) ;
         };
-
+        //   staking * y''      y''= (week*0.3836)+1
+        let taday_r = today_mint * my_today / (today_volume + my_today);
+        let apr = taday_r * 365 * 100000000 * 100 / (staking as u128)  ;
 
         if (flexible) {
-            if (smart_tablev1::contains(data, addr)) {
-                let you_user = smart_tablev1::borrow<address,UserPosition>(data,  addr);
-                //Represents that there are currently staking
-                if (you_user.already_reward > 0 && you_user.start_time > 0 && (((now - you_user.start_time) as u128) / SECONDS_OF_DAY) > 0) {
-                    let actually_day = ((now - you_user.start_time) as u128) / SECONDS_OF_DAY   ;
-                    let apr = (you_user.already_reward as u128) * 365 * 100000000 / (staking as u128) / actually_day   ;
-                    // let
-                    let roi = (you_user.already_reward as u128) * 100000000 / (staking as u128)  ;
-
-                    _vedat3 = my_today  ;
-                    let taday_r = today_mint * my_today / (today_volume + my_today);
-                    return (total_staking, taday_r, roi, apr, _vedat3, my_today)
-
-                    //A trailing ';' in an expression block implicitly adds a '()' value after the semicolon. That '()' value will not be reachable
-                    //     Any code after this expression will not be reached
-                };
-            };
-            //   staking * y''      y''= (week*0.3836)+1
-            let taday_r = today_mint * my_today / (today_volume + my_today);
-            let apr = taday_r * 365 * 100000000 / (staking as u128) / math128::pow(
-                10,
-                (coin::decimals<DAT3>() as u128)
-            );
             let roi = (taday_r) * 100000000 / (staking as u128)  ;
-
-            _vedat3 = my_today  ;
-            return (total_staking, taday_r, roi, apr, _vedat3, my_today)
+            _vedat3 = taday_r  ;
+            return (total_staking, taday_r, roi, apr, _vedat3, _vedat3)
         };
 
-        //A trailing ';' in an expression block implicitly adds a '()' value after the semicolon. That '()' value will not be reachable
-        //      Any code after this expression will not be reached
-        //
+        let taday_r = today_mint * my_today / (today_volume + my_today);
+        _all_simulate_reward = taday_r * (duration as u128) * 7 ;
+        let roi = _all_simulate_reward * 100000000 / (staking as u128)   ;
+        let _apr = taday_r * 100000000 * 365 / (staking as u128) ;
+        _vedat3 = _all_simulate_reward;
 
-
-        i = 0;
-        let maximum = duration * 7 + 1;
-        let passed = (((time - (start as u128)) / SECONDS_OF_WEEK) as u64);
-        if (duration > passed) {
-            maximum = (duration - passed) * 7 + 1
-        };
-
-        //Calculate the daily
-        while (i < maximum) {
-            leng = vector::length(&users);
-            let j = 0u64;
-            //simulate mint
-            let mint = simulate_mint(current_epoch, current_epoch) ;
-            let _volume = 0u128;
-            let passed = (((time - (start as u128)) / SECONDS_OF_WEEK) as u64);
-            //current user expiration date
-            if (duration > passed) {
-                let temp = ((duration - passed) as u128);
-
-                //add your stake factor
-                let your_stake_factor = (staking as u128) * ((temp * rate_of) + rate_of_decimal) ;
-                //reset daily stake factor
-                _volume = your_stake_factor;
-                if (leng > 0) {
-                    while (j < leng) {
-                        let add_j = vector::borrow(&users, j);
-                        let temp_user = smart_tablev1::borrow<address,UserPosition>(data, *add_j);
-                        // duration
-                        let temp_user_passed = (((time - (temp_user.start_time as u128)) / SECONDS_OF_WEEK) as u64);
-                        if (((temp_user.duration > temp_user_passed) || temp_user.flexible) && *add_j != addr) {
-                            let temp = 0u128;
-                            if (!temp_user.flexible) {
-                                temp = ((temp_user.duration - temp_user_passed) as u128);
-                            };
-                            _volume = _volume + ((temp_user.amount_staked as u128) * (temp * rate_of + rate_of_decimal));
-                        }else {
-                            vector::swap_remove(&mut users, j)  ;
-                            if (j > 1) {
-                                j = j - 1;
-                            };
-                            if ((leng - j) > 1) {
-                                leng = leng - 1;
-                            };
-                        };
-                        j = j + 1;
-                    };
-                };
-                all_simulate_reward = all_simulate_reward + mint * your_stake_factor / _volume;
-                _vedat3 = _vedat3 + your_stake_factor   ;
-            };
-
-            if ((maximum - i) != 1) {
-                time = time + SECONDS_OF_DAY;
-                current_epoch = current_epoch + EPOCH_OF_DAY;
-            };
-
-            i = i + 1;
-        };
-
-        let _apr = all_simulate_reward * 100000000 * 364 / ((time - (start as u128)) / SECONDS_OF_DAY) / math128::pow(
-            10,
-            (coin::decimals<DAT3>() as u128)
-        )   ;
-
-        let roi = all_simulate_reward * 100000000 / (staking as u128)   ;
-        return (total_staking, all_simulate_reward, roi, _apr, _vedat3, my_today)
+        return (total_staking, _all_simulate_reward, roi, _apr, _vedat3,taday_r )
     }
 
 
@@ -709,7 +639,7 @@ module dat3::stake {
             m = m * 2;
             i = i + 1;
         };
-        let mint = TOTAL_EMISSION * math128::pow(10, (coin::decimals<DAT3>() as u128)) / m ;
+        let mint = STAKE_EMISSION* math128::pow(10, (coin::decimals<DAT3>() as u128)) / m  ;
         return mint
     }
 }
