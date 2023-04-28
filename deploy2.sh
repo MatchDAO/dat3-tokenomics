@@ -1,7 +1,7 @@
 #!/bin/bash
 DAT3='0x6748abb929b79db07daf1f4f93c81cde7e298562fbaf80ab6fa8b6b59d15582a'
 DAT3_NFT='0x6b6a7337ce684ee778cc130a38c62a63ca08240ff7e675d273ecc5f94a94e2a6'
-PROFILE="test1"
+PROFILE="test2"
 N_PROFILE=$PROFILE"_nft"
 echo "dat3:' $DAT3'"
 echo""
